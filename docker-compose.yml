@@ -1,0 +1,49 @@
+services:
+  influxdb:
+    image: influxdb:1.8.10
+    ports:
+      - "127.0.0.1:8086:8086"
+    volumes:
+      - influxdb-data:/var/lib/influxdb
+    environment:
+      INFLUXDB_DB: telegraf
+    restart: unless-stopped
+  telegraf:
+    image: telegraf:1.30.3
+    user: "0:0"
+    entrypoint: ["/usr/bin/telegraf"]
+    command: ["--config", "/etc/telegraf/telegraf.conf"]
+    hostname: telegraf-getting-started
+    volumes:
+      - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - influxdb
+    restart: unless-stopped
+  kapacitor:
+    image: kapacitor:1.6.6
+    environment:
+      KAPACITOR_HOSTNAME: kapacitor
+      KAPACITOR_INFLUXDB_0_URLS_0: http://influxdb:8086
+    volumes:
+      - kapacitor-data:/var/lib/kapacitor
+    depends_on:
+      - influxdb
+    restart: unless-stopped
+  chronograf:
+    image: chronograf:1.10.5
+    command:
+      - --influxdb-url=http://influxdb:8086
+      - --kapacitor-url=http://kapacitor:9092
+    ports:
+      - "127.0.0.1:8888:8888"
+    volumes:
+      - chronograf-data:/var/lib/chronograf
+    depends_on:
+      - influxdb
+      - kapacitor
+    restart: unless-stopped
+volumes:
+  influxdb-data:
+  kapacitor-data:
+  chronograf-data:
